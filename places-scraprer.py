@@ -5,11 +5,6 @@ import re
 import codecs
 
 
-global status
-global g_requests
-global next_page_token
-
-
 api_radious = 0
 api_type = ""
 api_key = ""
@@ -33,15 +28,11 @@ gr_limit = 1000
 def read_page(url):
     page_json = urllib.request.urlopen(url).read()
     read_page_dict = json.loads(page_json.decode("utf-8"))  # json->bit->str->dict
-    global status
-    global g_requests
-    global next_page_token
-    status = read_page_dict['status']
-    resultKeys = read_page_dict.keys()
+    if read_page_dict['status'] != "OK": raise("API Status is NOT OK")
 
-    g_requests += 1
+    resultKeys = read_page_dict.keys()
     if "results" in resultKeys:
-        next_page_token = read_page_dict.get("next_page_token", None)
+        next_page_token = read_page_dict.get("next_page_token", None)  // NIIIIIIIIIIIIIIIIIIIIIIIE JEST PRZEKAZYWANY
         print("\nnew Next Page Token: %s\n" % next_page_token)
         return read_page_dict["results"]
     elif "result" in resultKeys:
@@ -51,7 +42,7 @@ def read_page(url):
         return {}
 
 
-def get_place(place_refference, url_place_details):
+def get_place(place_refference, url_place_details, api_key):s
     details_dict = read_page(url_place_details % (place_refference, api_key))
     return details_dict
 
@@ -144,13 +135,6 @@ def load_config():
     return json_config
 
 
-def newapi_key():
-    global api_key
-    global gr_limit
-    api_key = input("Input new Google Places Api Key")
-    gr_limit = int(input("Input requests limit for the Key"))
-
-
 def save_csv(data, file_path=""):
     pigi_list = []
     new_file = True
@@ -205,21 +189,18 @@ print("Location: i.e.: 50.262,19.029")
 loc = input()
 location = loc if loc != "" else json_config.get("default_location") 
 
-print("key %s" % api_key)
 url = url_first % (location, api_type, api_key)
 while True:
     print(url)
     page_search = read_page(url)
-    if status != "OK":
-        save_data(data)
-        print("Status Google Places NOT OK")
-        break
-
+    g_requests += 1
     if g_requests > 998:
-        newapi_key()
+        api_key = input("Input a new Google Places Api Key")
+        gr_limit = int(input("Input requests limit for the Key"))
+        g_requests = 0
 
     for search_record in page_search:
-        place = get_place(search_record["reference"])
+        place = get_place(search_record["reference"], url_place_details, api_key)
         if place.get("website"):
             links = find_contact_links(place.get("website", []))
         else:
