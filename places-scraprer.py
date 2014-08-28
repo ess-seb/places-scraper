@@ -11,119 +11,114 @@ import codecs
 ########################
 
 
-apiQuery = "biuro"
-apiRadious = 50000
-apiType = "travel_agency"
-apiKey = "AIzaSyCYxSVDHCuB1YNR-ZvALA3dlfUYpMuLTsw"
-apiLanguage = "pl"
-apiSensor = "false"
-apiLocation = "50.26265849772663,19.02935028076172"
+global status
+global g_requests
+global next_page_token
 
-contWords = "|".join(["kontakt", "Kontakt", "Contact", "contact", "KONTAKT", "CONTACT"])
-myFile = codecs.open('mojcion.json', 'a', 'utf-8')
+
+api_radious = 0
+api_type = ""
+api_key = ""
+api_location = ""
+cont_words = "|".join(["kontakt", "Kontakt", "Contact", "contact", "KONTAKT", "CONTACT"])
+
 
 #########################
 
 status = ""
-# urlFirst = "https://maps.googleapis.com/maps/api/place/textsearch/json?types=%s&location=%s&radius=50000&language=%s&query=%s&sensor=%s&key=%s" % (apiType, apiLocation, apiLanguage, apiQuery, apiSensor, apiKey)
-urlFirst = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=%s&types=%s&rankby=distance&key=%s" % (apiLocation, apiType, apiKey)
-# urlNext = "https://maps.googleapis.com/maps/api/place/textsearch/json?pagetoken=%s&sensor=%s&key=%s"
-urlNext = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=%s&key=%s"
-nextPageToken = ""
+url_first = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=%s&types=%s&rankby=distance&key=%s" % (api_location, api_type, api_key)
+url_next = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=%s&key=%s"
+next_page_token = ""
 data = []
-pageDict = {}  # strona wyników wyszukiwania
-pageNo = 0
-gRequests = 0
-grLimit = 1000
+page_dict = {}  # strona wyników wyszukiwania
+page_no = 0
+g_requests = 0
+gr_limit = 1000
 
 
 
-def readPage(url):  # zwraca (listę, słowników) stronę odpowiedzi z palces
+def read_page(url, ):
     # print(url)
-    pageJson = urllib.request.urlopen(url).read()
-    #print(pageJson)
+    page_json = urllib.request.urlopen(url).read()
+    #print(page_json)
     # print(url)
-    readPageDict = json.loads(pageJson.decode("utf-8"))  # json->str->dict
+    read_page_dict = json.loads(page_json.decode("utf-8"))  # json->bit->str->dict
     global status
-    global gRequests
-    global nextPageToken
-    status = readPageDict['status']
-    resultKeys = readPageDict.keys()
+    global g_requests
+    global next_page_token
+    status = read_page_dict['status']
+    resultKeys = read_page_dict.keys()
 
-    gRequests += 1
+    g_requests += 1
     if "results" in resultKeys:
-        nextPageToken = readPageDict.get("next_page_token", None)
-        print("\nnew Next Page Token: %s\n" % nextPageToken)
-        return readPageDict["results"]
+        next_page_token = read_page_dict.get("next_page_token", None)
+        print("\nnew Next Page Token: %s\n" % next_page_token)
+        return read_page_dict["results"]
     elif "result" in resultKeys:
-        return readPageDict["result"]
+        return read_page_dict["result"]
     else:
         print("Eroor: there is no \'result\' nor \'results\' key")
         return {}
 
 
-def getPlace(placeReference):  # zwraca słownik, szegóły miejsca, pobiera kode refernece do konkretnego miejsca
-    #urllib.urlencode({
-    #    'reference': placeReference
-    #})
-    urlPlaceDetailsPage = "https://maps.googleapis.com/maps/api/place/details/json?reference=" + placeReference + "&key=" + apiKey
-    detailsDict = readPage(urlPlaceDetailsPage)
-    return detailsDict
+def get_place(place_refference):
+    url_place_details = "https://maps.googleapis.com/maps/api/place/details/json?reference=" + place_refference + "&key=" + api_key
+    details_dict = read_page(url_place_details)
+    return details_dict
 
 
-def findContactLink(url):
+def find_contact_links(url):
     # print(url)
     if url[len(url) - 1] == '/':
         url = url[:-1]
     links = []
-    linksNoDup = []
     try:
         web = bs(urllib.request.urlopen(url).read())
-        contactLinkS = web.find('body').findAll('a')
-        for contactLink in contactLinkS:
-            if re.search(contWords, contactLink.text):
-                newLink = contactLink["href"]
-                if ("http" in newLink) | ("www" in newLink):
-                    links.append(newLink)
+        contact_link_s = web.find('body').findAll('a')
+        for contact_link in contact_link_s:
+            if re.search(cont_words, contact_link.text):
+                new_link = contact_link["href"]
+                if ("http" in new_link) | ("www" in new_link):
+                    links.append(new_link)
                 else:
-                    if newLink[0] == '/':
-                        newLink = newLink[1:]
-                    links.append(url + "/" + newLink)
-        linksNoDup = list(set(links))
+                    if new_link[0] == '/':
+                        new_link = new_link[1:]
+                    links.append(url + "/" + new_link)
+        links = list(set(links))
     except Exception as e:
-        linksNoDup.append(str(e))
-        print("Company page ERROR: %s" % url)
+        links.append(str(e))
+        print("Place page ERROR: %s" % url)
     finally:
-        return linksNoDup
+        return links
 
 
-def findEmails(whereUrl):
-    emailsNoDup = []
+def find_emails(where_url):
+    emails = []
     try:
-        webString = urllib.request.urlopen(whereUrl).read()
-        emails = re.findall(r"[0-9.\-_a-zA-Z]+@[0-9.\-_a-zA-Z]+\.[-_.0-9a-zA-Z]{2,6}|[0-9.\-_a-zA-Z]+\[at\][0-9.\-_a-zA-Z]+\.[-_.0-9a-zA-Z]{2,6}", webString.decode("utf-8"))
-        emailsNoDup = list(set(emails))
+        web_string = urllib.request.urlopen(where_url).read()
+        emails = re.findall(r"[0-9.\-_a-zA-Z]+@[0-9.\-_a-zA-Z]+\.[-_.0-9a-zA-Z]{2,6}|[0-9.\-_a-zA-Z]+\[at\][0-9.\-_a-zA-Z]+\.[-_.0-9a-zA-Z]{2,6}", web_string.decode("utf-8"))
+        emails = list(set(emails))
     except Exception as e:
-        emailsNoDup.append(str(e))
-        print("Contact page ERROR: %s" % whereUrl)
+        emails.append(str(e))
+        print("Email page ERROR: %s" % where_url)
     finally:
-        return emailsNoDup
+        return emails
 
 
-def agregatePlace(place, contactLinks, emails):
-    dataPlace = {}
-    addressCompo = {}
+def agregate_place(place, contact_link_s, emails):
+    data_place = {}
+    address_compo = {}
 
     for e in place['address_components']:
         for t in e['types']:
-            addressCompo[t] = e['long_name']
+            address_compo[t] = e['long_name']
 
-    dataPlace = {
+    data_place = {
             "name": place["name"],
             "formatted_phone_number": place["formatted_phone_number"],
             "international_phone_number": place["international_phone_number"],
             "website": place["website"],
-            "contact_page": contactLinks,
+            "contact_page": contact_link_s,
             "emails": emails,
             # "rating": place["rating"],
             "location": {
@@ -132,72 +127,78 @@ def agregatePlace(place, contactLinks, emails):
             },
             "formatted_address": place["formatted_address"],
             "address_components": {
-                "street_number": addressCompo.get("street_number", None),
-                "route": addressCompo.get("route", None),
-                "city": addressCompo.get("locality", None),
-                "state": addressCompo.get("administrative_area_level_1", None),
-                "country": addressCompo.get("country", None),
-                "postal_code": addressCompo.get("postal_code", None)
+                "street_number": address_compo.get("street_number", None),
+                "route": address_compo.get("route", None),
+                "city": address_compo.get("locality", None),
+                "state": address_compo.get("administrative_area_level_1", None),
+                "country": address_compo.get("country", None),
+                "postal_code": address_compo.get("postal_code", None)
             }
         }
-    return dataPlace
+    return data_place
 
 
-def saveData(toSave):
+def save_data(toSave):
+    my_file = codecs.open('mojcion.json', 'a', 'utf-8')
     print("Saving... I hope...")
     for rowSave in toSave:
-        myFile.write(json.dumps(rowSave) + ",\n")
+        my_file.write(json.dumps(rowSave) + ",\n")
 
+def load_config():
+    json_file=open('config.json')
+    data = json.load(json_file)
+    json_file.close()
+    return json_file
 
-def newApiKey():
-    global apiKey
-    global grLimit
-    apiKey = raw_input("Input new Google Places Api Key")
-    grLimit = int(raw_input("Input requests limit for the Key"))
+def newapi_key():
+    global api_key
+    global gr_limit
+    api_key = raw_input("Input new Google Places Api Key")
+    gr_limit = int(raw_input("Input requests limit for the Key"))
 
 
 print("Lokalizacja:")
 loc = raw_input()
-if lok != "": apiLocation = lok
+if lok != "": api_location = lok
 
-url = urlFirst
+url = url_first
 while True:
-    pageSearch = readPage(url)
+    page_search = read_page(url)
     if status != "OK":
-        saveData(data)
+        save_data(data)
         print("Status Google Places NOT OK")
         break
 
-    if gRequests > 998:
-        newApiKey()
+    if g_requests > 998:
+        newapi_key()
 
-    for searchRecord in pageSearch:
-        place = getPlace(searchRecord["reference"])
+    for search_record in page_search:
+        place = get_place(search_record["reference"])
         if place.get("website"):
-            links = findContactLink(place.get("website", []))
+            links = find_contact_links(place.get("website", []))
         else:
             place["website"] = []
             links = []
 
         emails = []
         for link in links:
-            emails = findEmails(link)
+            emails = find_emails(link)
 
-        thisData = agregatePlace(place, links, emails)
-        print('%70s  |    emails: %3s    |     requests: %3s    |    page: %3s    |    status %3s' % (thisData["name"], len(thisData["emails"]), gRequests, pageNo, status))
-        data.append(thisData)
+        this_data = agregate_place(place, links, emails)
+        print('%70s  |    emails: %3s    |     requests: %3s    |    page: %3s    |    status %3s' % (this_data["name"], len(this_data["emails"]), g_requests, page_no, status))
+        data.append(this_data)
         # print data
 
-    saveData(data)
+    save_data(data)
     data = []
 
-    if not nextPageToken:
+    if not next_page_token:
         print("Warning: No next_page_token status: %s" % status)
         break
-    url = urlNext % (nextPageToken, apiKey)
-    pageNo += 1
+    url = url_next % (next_page_token, api_key)
+    page_no += 1
 
-    # if pageNo == 3:
+    # if page_no == 3:
     #     break
 
 
@@ -209,8 +210,8 @@ def save_csv(data, file_path=""):
 
     if file_path == "":
         file_path = filedialog.asksavefilename(
-            title="Zapisz raport z odejmowania PIGI",
-            filetypes=[("Wszystkie pliki", ".*"), ("CSV", ".csv")],
+            title="Save CSV",
+            filetypes=[("All files", ".*"), ("CSV", ".csv")],
             parent=root)
 
     if not ".csv" in file_path:
@@ -245,48 +246,4 @@ def save_csv(data, file_path=""):
 
 
 
-# i = 0
 
-# while pageSearch['next_page_token']:
-#     i += 1 
-#     if i == 2: 
-#         exit(0)
-
-#     urlNext = "https://maps.googleapis.com/maps/api/place/textsearch/json?pagetoken="+pageSearch['next_page_token']+"&sensor="+apiSensor+"&key="+apiKey
-#     pageSearch = readPage(urlNext)
-#     doPlaces(pageSearch)
-
-
-
-##########################################
-
-# # urlN = pageSearch['']
-# # $print json.dumps({'apple': 'cat', 'banana':'dog', 'pear':'fish'}) #dict->jsonStr
-
-# txt = raw_input('Pytam się ciebie')
-
-# text = " <a href=\"/kbontakt\">SKontaktować</a>"
-# if re.search("|".join(contWords), text): print "yo"
-
-    # if s.endswith(" "): s = s[:-1]
-     # if s.startswith(" "): s = s[1:]
-
-
-# "bla bla bla %20s bla bla %s" % ("yo yo yo", "wtf") #ile ma zarezerwować miejsca na placeholder
-
-# for imie, rola in zip(["janek", "edek", "maciej"], ["przyjaciel", "brat", "kuzyn"])
-#    print "text %s ty %s" % (imie, rola)
-# %.2f (float dwa miejsce po przecinku)
-
-#lista = [1, 2, 3]
-#kwadraty = [e **2 for e in lista]
-# kwadraty = [e: e **2 for e in lista]
-# kwadraty = [e: * 2 for e in lista if e>2]
-# kwadraty = [e for row in lista for e in row if e > 2]
-
-
-#for licznik, wynik in enumerate(wyniki_dane, 1) # 1 znaczy żeby numerował od 1
-
-# a, b, c = ['a', 'b', 'c']
-# if lista.isdigit():
-# print "Tomek, Bartek, Jurek, Alicja".rsplit(",", 1)  #1-podzil raz split() od lewej rsplit od prawej
