@@ -153,7 +153,7 @@ def load_config():
 
     print("Location: i.e.: 50.262,19.029")
     loc = input()
-    location = lok if lok != "" else location = json_config.get("default_location") 
+    location = lok if lok != "" else json_config.get("default_location") 
 
     return json_file
 
