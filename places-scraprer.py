@@ -16,24 +16,22 @@ api_key = ""
 location = ""
 cont_words = ""
 status = ""
-url_first = "https://maps.googleapis.com/maps/api/\
-            place/nearbysearch/json?location=%s&types=%s&\
-            rankby=distance&key=%s" % (location, api_type, api_key)
-url_next = "https://maps.googleapis.com/maps/api/\
-            place/nearbysearch/json?pagetoken=%s&key=%s"
+url_first = 'https://maps.googleapis.com/maps/api/place/'\
+            'nearbysearch/json?location=%s&types=%s&rankby=distance&key=%s'
+url_next = 'https://maps.googleapis.com/maps/api/place/'\
+           'nearbysearch/json?pagetoken=%s&key=%s'
+url_place_details = 'https://maps.googleapis.com/maps/api/place/'\
+                    'details/json?reference=%s&key=%s'
 next_page_token = ""
 data = []
-page_dict = {}  # strona wyników wyszukiwania
+page_dict = {} 
 page_no = 0
 g_requests = 0
 gr_limit = 1000
 
 
-def read_page(url, ):
-    # print(url)
+def read_page(url):
     page_json = urllib.request.urlopen(url).read()
-    #print(page_json)
-    # print(url)
     read_page_dict = json.loads(page_json.decode("utf-8"))  # json->bit->str->dict
     global status
     global g_requests
@@ -53,9 +51,7 @@ def read_page(url, ):
         return {}
 
 
-def get_place(place_refference):
-    url_place_details = "https://maps.googleapis.com/maps/api\
-                        /place/details/json?reference=%s&key=%s"
+def get_place(place_refference, url_place_details):
     details_dict = read_page(url_place_details % (place_refference, api_key))
     return details_dict
 
@@ -78,8 +74,8 @@ def find_contact_links(url):
                         new_link = new_link[1:]
                     links.append(url + "/" + new_link)
         links = list(set(links))
-    except Exception as e:
-        links.append(str(e))
+    except Exception as er:
+        links.append(str(er))
         print("Place page ERROR: %s" % url)
     finally:
         return links
@@ -89,13 +85,13 @@ def find_emails(where_url):
     emails = []
     try:
         web_string = urllib.request.urlopen(where_url).read()
-        emails = re.findall(r"[0-9.\-_a-zA-Z]+@\
-            [0-9.\-_a-zA-Z]+\.[-_.0-9a-zA-Z]{2,6}|\
-            [0-9.\-_a-zA-Z]+\[at\][0-9.\-_a-zA-Z]+\.\
-            [-_.0-9a-zA-Z]{2,6}", web_string.decode("utf-8"))
+        emails = re.findall(r'[0-9.\-_a-zA-Z]+@'\
+                            '[0-9.\-_a-zA-Z]+\.[-_.0-9a-zA-Z]{2,6}|'\
+                            '[0-9.\-_a-zA-Z]+\[at\][0-9.\-_a-zA-Z]+\.'\
+                            '[-_.0-9a-zA-Z]{2,6}', web_string.decode("utf-8"))
         emails = list(set(emails))
-    except Exception as e:
-        emails.append(str(e))
+    except Exception as er:
+        emails.append(str(er))
         print("Email page ERROR: %s" % where_url)
     finally:
         return emails
@@ -142,20 +138,10 @@ def save_data(toSave):
 
 
 def load_config():
-    json_file=open('config.json')
+    json_file=codecs.open('config.json', 'r', 'utf-8')
     json_config = json.load(json_file)
     json_file.close()
-
-    api_radious = json_config.get("search_radious")
-    api_type = json_config.get("place_type")
-    api_key = json_config.get("api_key")
-    cont_words = "|".join(json_config.get("where_emails"))
-
-    print("Location: i.e.: 50.262,19.029")
-    loc = input()
-    location = lok if lok != "" else json_config.get("default_location") 
-
-    return json_file
+    return json_config
 
 
 def newapi_key():
@@ -209,8 +195,20 @@ def save_csv(data, file_path=""):
 
 
 
-url = url_first
+json_config = load_config()
+api_radious = json_config.get("search_radious")
+api_type = json_config.get("place_type")
+api_key = json_config.get("api_key")
+cont_words = "|".join(json_config.get("where_emails"))
+
+print("Location: i.e.: 50.262,19.029")
+loc = input()
+location = loc if loc != "" else json_config.get("default_location") 
+
+print("key %s" % api_key)
+url = url_first % (location, api_type, api_key)
 while True:
+    print(url)
     page_search = read_page(url)
     if status != "OK":
         save_data(data)
@@ -245,10 +243,3 @@ while True:
         break
     url = url_next % (next_page_token, api_key)
     page_no += 1
-
-    # if page_no == 3:
-    #     break
-
-
-
-

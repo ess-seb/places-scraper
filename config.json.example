@@ -1,7 +1,9 @@
 {
-	"search_radious": 50000, //max 50 000 meters
-	"place_type": "art_gallery", //https://developers.google.com/places/documentation/supported_types?hl=pl
-	"api_key": " ", //from https://accounts.google.com/ServiceLogin?service=devconsole&passive=1209600&continue=https%3A%2F%2Fcode.google.com%2Fapis%2Fconsole%2F%3Fnoredirect&followup=https%3A%2F%2Fcode.google.com%2Fapis%2Fconsole%2F%3Fnoredirect
+	"search_radious": 50000, 
+	"_search_radious_comment": "max 50 000 meters",
+	"place_type": "travel_agency",
+	"_place_type_comment": "from https://developers.google.com/places/documentation/supported_types?hl=pl",
+	"api_key": "",
 	"default_location": "50.26265849772663,19.02935028076172",
 	"where_emails": ["kontakt", "Kontakt", "Contact", "contact", "KONTAKT", "CONTACT"]
 }
