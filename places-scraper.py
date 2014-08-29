@@ -111,6 +111,35 @@ def agregate_place(place, contact_link_s, emails):
     return data_place
 
 
+
+def agregate_place_cartodb(place, contact_link_s, emails):
+    data_place = {}
+    address_compo = {}
+
+    for e in place['address_components']:
+        for t in e['types']:
+            address_compo[t] = e['long_name']
+
+    data_place = {
+            "name": place.get("name", None),
+            "formatted_phone_number": place.get("formatted_phone_number", None),
+            "international_phone_number": place.get("international_phone_number", None),
+            "website": place.get("website", None),
+            "contact_page": "; ".join(contact_link_s),
+            "emails": "; ".join(emails),
+            "lat": place["geometry"]["location"]["lat"],
+            "lng": place["geometry"]["location"]["lng"],
+            "formatted_address": place.get("formatted_address", None),
+            "street_number": address_compo.get("street_number", None),
+            "route": address_compo.get("route", None),
+            "city": address_compo.get("locality", None),
+            "state": address_compo.get("administrative_area_level_1", None),
+            "country": address_compo.get("country", None),
+            "postal_code": address_compo.get("postal_code", None)
+        }
+    return data_place
+
+
 def save_data(data):
     my_file = codecs.open('output.json', 'w', 'utf-8')
     print("Saving... I hope... output.json")
@@ -171,7 +200,7 @@ try:
             for link in links:
                 emails = find_emails(link)
 
-            this_data = agregate_place(place, links, emails)
+            this_data = agregate_place_cartodb(place, links, emails)
             print('%s \nemails: %3s  |  API page: %3s\n\n'
                   % (this_data["name"], len(this_data["emails"]), page_no))
             data.append(this_data)
