@@ -28,7 +28,9 @@ gr_limit = 1000
 def get_search_page(url):
     page_json = urllib.request.urlopen(url).read()
     search_page = json.loads(page_json.decode("utf-8"))  # json->bit->str->dict
-    if search_page['status'] != "OK": raise("Error: API Status is NOT OK")
+    if search_page['status'] != "OK":
+        print("Error: %s" % search_page['status'])
+        raise("Error: API Status is NOT OK")
     return search_page
 
 
@@ -94,11 +96,8 @@ def agregate_place(place, contact_link_s, emails):
             "website": place.get("website", None),
             "contact_page": contact_link_s,
             "emails": emails,
-            # "rating": place["rating"],
-            "location": {
-               "lat": place["geometry"]["location"]["lat"],
-               "lng": place["geometry"]["location"]["lng"]
-            },
+            "lat": place["geometry"]["location"]["lat"],
+            "lng": place["geometry"]["location"]["lng"],
             "formatted_address": place.get("formatted_address", None),
             "address_components": {
                 "street_number": address_compo.get("street_number", None),
@@ -140,7 +139,7 @@ loc_r = re.compile('\d+\.*\d*,\d+\.*\d*')
 while True:
     print("Location: i.e.: 50.262,19.029")
     loc = input()
-    if (loc_r.match(loc) is None) | (loc == ""): break
+    if (loc_r.match(loc) is not None) | (loc == ""): break
     else: print("Error: wrong format take a look at the example")
 
 location = loc if loc != "" else json_config.get("default_location") 
@@ -185,8 +184,10 @@ try:
         url = url_next % (next_page_token, api_key)
         page_no += 1
 
-except:
-    raise
+except Exception as e:
+    print(e)
+    # raise
 
 finally:
     save_data(data)
+    pass
