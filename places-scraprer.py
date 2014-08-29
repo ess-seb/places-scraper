@@ -20,30 +20,21 @@ url_place_details = 'https://maps.googleapis.com/maps/api/place/'\
 next_page_token = ""
 data = []
 page_dict = {} 
-page_no = 0
+page_no = 1
 g_requests = 0
 gr_limit = 1000
 
 
-def read_page(url):
+def get_search_page(url):
     page_json = urllib.request.urlopen(url).read()
-    read_page_dict = json.loads(page_json.decode("utf-8"))  # json->bit->str->dict
-    if read_page_dict['status'] != "OK": raise("API Status is NOT OK")
-
-    resultKeys = read_page_dict.keys()
-    if "results" in resultKeys:
-        next_page_token = read_page_dict.get("next_page_token", None)  // NIIIIIIIIIIIIIIIIIIIIIIIE JEST PRZEKAZYWANY
-        print("\nnew Next Page Token: %s\n" % next_page_token)
-        return read_page_dict["results"]
-    elif "result" in resultKeys:
-        return read_page_dict["result"]
-    else:
-        print("Eroor: there is no \'result\' nor \'results\' key")
-        return {}
+    search_page = json.loads(page_json.decode("utf-8"))  # json->bit->str->dict
+    if search_page['status'] != "OK": raise("Error: API Status is NOT OK")
+    return search_page
 
 
-def get_place(place_refference, url_place_details, api_key):s
-    details_dict = read_page(url_place_details % (place_refference, api_key))
+def get_place(place_refference, url_place_details, api_key):
+    url_place_details = url_place_details  % (place_refference, api_key)
+    details_dict = get_search_page(url_place_details).get("result", {})
     return details_dict
 
 
@@ -97,10 +88,10 @@ def agregate_place(place, contact_link_s, emails):
             address_compo[t] = e['long_name']
 
     data_place = {
-            "name": place["name"],
-            "formatted_phone_number": place["formatted_phone_number"],
-            "international_phone_number": place["international_phone_number"],
-            "website": place["website"],
+            "name": place.get("name", None),
+            "formatted_phone_number": place.get("formatted_phone_number", None),
+            "international_phone_number": place.get("international_phone_number", None),
+            "website": place.get("website", None),
             "contact_page": contact_link_s,
             "emails": emails,
             # "rating": place["rating"],
@@ -108,7 +99,7 @@ def agregate_place(place, contact_link_s, emails):
                "lat": place["geometry"]["location"]["lat"],
                "lng": place["geometry"]["location"]["lng"]
             },
-            "formatted_address": place["formatted_address"],
+            "formatted_address": place.get("formatted_address", None),
             "address_components": {
                 "street_number": address_compo.get("street_number", None),
                 "route": address_compo.get("route", None),
@@ -121,11 +112,12 @@ def agregate_place(place, contact_link_s, emails):
     return data_place
 
 
-def save_data(toSave):
-    my_file = codecs.open('mojcion.json', 'a', 'utf-8')
-    print("Saving... I hope...")
-    for rowSave in toSave:
-        my_file.write(json.dumps(rowSave) + ",\n")
+def save_data(data):
+    my_file = codecs.open('output.json', 'w', 'utf-8')
+    print("Saving... I hope... output.json")
+    # for row_data in data:
+    #     my_file.write(json.dumps(row_data) + ",\n")
+    my_file.write(json.dumps(data))
 
 
 def load_config():
@@ -133,48 +125,6 @@ def load_config():
     json_config = json.load(json_file)
     json_file.close()
     return json_config
-
-
-def save_csv(data, file_path=""):
-    pigi_list = []
-    new_file = True
-    root = Tk()
-    root.withdraw()
-
-    if file_path == "":
-        file_path = filedialog.asksavefilename(
-            title="Save CSV",
-            filetypes=[("All files", ".*"), ("CSV", ".csv")],
-            parent=root)
-
-    if not ".csv" in file_path:
-        file_path += ".csv"
-
-    new_file = not os.path.isfile(file_path)
-
-    try:
-        my_file = open(file_path, 'a')
-
-        if new_file:
-        # jeśli plik jest nowy dodaje klucze jako wiersz z etykietami
-            row = ";".join([keys for keys in data[0]])
-            row += "\n"
-            my_file.writelines(row)
-
-        for datarow in data:
-            row = ";".join([str(datarow[cell]) for cell in datarow])
-            row = row.replace(".", ",")
-            row += "\n"
-            my_file.writelines(row)
-
-        my_file.close()
-        print("RAPORT has been saved: %s" % file_path)
-        return file_path
-
-    except Exception as e:
-        print("ERROR: raport has been NOT saved because of %s" % str(e))
-        return False
-
 
 
 
@@ -185,42 +135,58 @@ api_type = json_config.get("place_type")
 api_key = json_config.get("api_key")
 cont_words = "|".join(json_config.get("where_emails"))
 
-print("Location: i.e.: 50.262,19.029")
-loc = input()
-location = loc if loc != "" else json_config.get("default_location") 
+loc_r = re.compile('\d+\.*\d*,\d+\.*\d*')
 
-url = url_first % (location, api_type, api_key)
 while True:
-    print(url)
-    page_search = read_page(url)
-    g_requests += 1
-    if g_requests > 998:
-        api_key = input("Input a new Google Places Api Key")
-        gr_limit = int(input("Input requests limit for the Key"))
-        g_requests = 0
+    print("Location: i.e.: 50.262,19.029")
+    loc = input()
+    if (loc_r.match(loc) is None) | (loc == ""): break
+    else: print("Error: wrong format take a look at the example")
 
-    for search_record in page_search:
-        place = get_place(search_record["reference"], url_place_details, api_key)
-        if place.get("website"):
-            links = find_contact_links(place.get("website", []))
-        else:
-            place["website"] = []
-            links = []
+location = loc if loc != "" else json_config.get("default_location") 
+url = url_first % (location, api_type, api_key)
 
-        emails = []
-        for link in links:
-            emails = find_emails(link)
+try:
+    while True: #while-do
+        print(url)
+        search_page = get_search_page(url)
+        next_page_token = search_page.get("next_page_token", None)
+        # print("\nnew Next Page Token: %s\n" % next_page_token)
+        places_page = search_page.get("results", {})
+        
+        g_requests += 1
+        if g_requests > 998:
+            api_key = input("Input a new Google Places Api Key")
+            gr_limit = int(input("Input requests limit for the Key"))
+            g_requests = 0
 
-        this_data = agregate_place(place, links, emails)
-        print('%70s  |    emails: %3s    |     requests: %3s    |    page: %3s    |    status %3s' % (this_data["name"], len(this_data["emails"]), g_requests, page_no, status))
-        data.append(this_data)
-        # print data
+        for search_record in places_page:
+            place = get_place(search_record["reference"], url_place_details, api_key)
+            if place.get("website"):
+                links = find_contact_links(place.get("website", []))
+            else:
+                place["website"] = []
+                links = []
 
+            emails = []
+            for link in links:
+                emails = find_emails(link)
+
+            this_data = agregate_place(place, links, emails)
+            print('%s \nemails: %3s  |  API page: %3s\n\n'
+                  % (this_data["name"], len(this_data["emails"]), page_no))
+            data.append(this_data)
+            # print data
+
+        if not next_page_token:
+            print("Warning: No next_page_token status")
+            break
+
+        url = url_next % (next_page_token, api_key)
+        page_no += 1
+
+except:
+    raise
+
+finally:
     save_data(data)
-    data = []
-
-    if not next_page_token:
-        print("Warning: No next_page_token status: %s" % status)
-        break
-    url = url_next % (next_page_token, api_key)
-    page_no += 1
