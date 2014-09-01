@@ -221,4 +221,4 @@ except Exception as e:
 
 finally:
     save_data(data)
-    pass
+    input()
