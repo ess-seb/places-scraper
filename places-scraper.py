@@ -163,11 +163,12 @@ api_type = json_config.get("place_type")
 api_key = json_config.get("api_key")
 cont_words = "|".join(json_config.get("where_emails"))
 
-loc_r = re.compile('\d+\.*\d*,\d+\.*\d*')
+loc_r = re.compile(r'\d+\.*\d*,\d+\.*\d*')
 
 while True:
     print("Location: i.e.: 50.262,19.029")
     loc = input()
+    loc = re.sub(r'[*+`~&^%\-!@#$\s\n<>(){}/\\_a-zA-Z]', '', loc)
     if (loc_r.match(loc) is not None) | (loc == ""): break
     else: print("Error: wrong format take a look at the example")
 
@@ -198,7 +199,8 @@ try:
 
             emails = []
             for link in links:
-                emails = find_emails(link)
+                for em in find_emails(link):
+                    emails.append(em)
 
             this_data = agregate_place_cartodb(place, links, emails)
             print('%s \nemails: %3s  |  API page: %3s\n\n'
